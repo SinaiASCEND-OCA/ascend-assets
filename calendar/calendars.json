@@ -1,0 +1,40 @@
+[
+  {
+    "key": "co2030",
+    "id": "oktcjltkdee551v5ng4g9m2rv8@group.calendar.google.com",
+    "label": "Phase 1 \u00b7 Year 1",
+    "short": "Phase 1 \u00b7 Y1",
+    "color": "#00A0C8",
+    "year": 1,
+    "phase": 1
+  },
+  {
+    "key": "co2029",
+    "id": "6nvn328ppp9ggspvadnt6vgbsg@group.calendar.google.com",
+    "label": "Phase 1 \u00b7 Year 2",
+    "short": "Phase 1 \u00b7 Y2",
+    "color": "#D6177F",
+    "year": 2,
+    "phase": 1
+  },
+  {
+    "key": "co2028",
+    "id": "q0pv8t8qsoe49gaiqeua029pik@group.calendar.google.com",
+    "label": "Phase 2",
+    "short": "Phase 2",
+    "color": "#6B3FA0",
+    "year": 3,
+    "classOf": 2028,
+    "repeatSlots": true,
+    "phase": 2
+  },
+  {
+    "key": "co2027",
+    "id": "jsf81a1viesbpmfdrtkt74se80@group.calendar.google.com",
+    "label": "Phase 3",
+    "short": "Phase 3",
+    "color": "#2E8B57",
+    "year": 4,
+    "phase": 3
+  }
+]

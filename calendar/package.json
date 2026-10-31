@@ -1,0 +1,12 @@
+{
+  "name": "ascend-class-calendar-data",
+  "private": true,
+  "type": "module",
+  "description": "Builds data/events.json and data/contact-hours.json from the public class Google Calendars for the ASCEND dashboards",
+  "scripts": {
+    "build": "node fetch-calendar.mjs && node build-hours.mjs"
+  },
+  "dependencies": {
+    "node-ical": "^0.20.1"
+  }
+}
