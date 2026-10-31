@@ -1,0 +1,51 @@
+name: Build class calendar data and deploy
+
+# Publishes this repo (masthead files) plus calendar/data/*.json, rebuilt from the
+# public class Google Calendars. Runs every 30 minutes, on every push to main,
+# and on demand from the Actions tab ("Run workflow"). Nothing is committed: the
+# fresh data ships inside the Pages deployment.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: calendar/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: calendar
+      - run: npm run build
+        working-directory: calendar
+      - name: Assemble site
+        run: |
+          mkdir -p "$RUNNER_TEMP/site"
+          rsync -a --exclude .git --exclude .github --exclude node_modules ./ "$RUNNER_TEMP/site/"
+          test -s "$RUNNER_TEMP/site/calendar/data/contact-hours.json"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+      - id: deploy
+        uses: actions/deploy-pages@v4
