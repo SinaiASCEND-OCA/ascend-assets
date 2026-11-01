@@ -60,6 +60,7 @@ function cleanDescription(html) {
 const CODE = /\b(LEC|LAB|SGD|CCSG|INT|REV|PTP|PAN|PNL|LGD|QUIZ|TA|ACS|SLF-STD|OFC-HRS|PRE-?CHECK|EXAM|SESSION)\b/i;
 const CODE_KIND = { LEC:"lec", LGD:"lec", LAB:"lab", ACS:"acs", SGD:"sgd", CCSG:"ccsg", INT:"int", REV:"rev", TA:"rev", PTP:"pnl", PAN:"pnl", PNL:"pnl",
   QUIZ:"quiz", "PRE-CHECK":"precheck", PRECHECK:"precheck", EXAM:"exam", OSCE:"osce", "SLF-STD":"open", "OFC-HRS":"open" };
+const INSTR_KINDS = new Set(["lec","sgd","ccsg","lab","acs","pnl","rev","int","clinical","session"]);
 function classify(title) {
   const t = title.toUpperCase();
   const mandatory = /MANDATORY/.test(t);
@@ -68,7 +69,7 @@ function classify(title) {
   if (/\bMODULE\s*$/.test(t) && !code) kind = "module";
   else if (/PRE-?CHECK|CCSG BASICS/.test(t)) kind = "precheck";   /* assignment windows, even when titled "CCSG Basics n (Closes …)" */
   else if (code) kind = CODE_KIND[code[1].replace("PRECHECK", "PRE-CHECK")] || "other";
-  else if (/OBJECTIVE STRUCTURED CLINICAL/.test(t)) kind = "osce";
+  else if (/(OBJECTIVE|OBSERVED) STRUCTURED CLINICAL/.test(t)) kind = "osce";
   else if (/ASSESSMENT|PROCTORED|\bCAS\b|NBME|CBSE|\bPRACTICAL\s*$|END-OF-MODULE PRACTICAL/.test(t)) kind = "exam";
   else if (/MODULE INTRODUCTION|ORIENTATION/.test(t)) kind = "int";
   else if (/REVIEW SESSION|TA REVIEW|TA SESSION/.test(t)) kind = "rev";
@@ -80,6 +81,13 @@ function classify(title) {
   else if (/CLASS MEETING|TOWN HALL|CEREMONY|OATH|MATCH|RETREAT|GATHERING/.test(t)) kind = "meeting";
   else if (/\bPOM\b|PEAKS|CLINICAL SKILLS|PRECEPTOR/.test(t)) kind = "clinical";
   else if (/INFO SESSION|WORKSHOP|\bIF\d|REGROUP|BCAMP|BOOT ?CAMP|SESSION/.test(t)) kind = "session";
+  /* an assessment day entered under a teaching code ("POM SGD: History Taking and Writeup: Observed Structured Clinical
+     Examination Assessment (Full Day)", "POM 2 CCSG 21: End of Module Exam") is an assessment, not 7-10 h of small group;
+     reviews and prep for an OSCE or exam, and physical-exam teaching ("Core Physical Exam II"), stay instructional */
+  if (INSTR_KINDS.has(kind) && !/REVIEW|\bPREP/.test(t)) {
+    if (/(OBJECTIVE|OBSERVED) STRUCTURED CLINICAL EXAM/.test(t)) kind = "osce";
+    else if (/\b(END|MID)[- ]?(OF[- ])?MODULE EXAM\b/.test(t)) kind = "exam";
+  }
   const module = moduleOf(title);
   if (kind === "exam" && /^POM \d/.test(module)) kind = "osce";   /* POM has no written exam: its assessments are OSCEs */
   return { kind, mandatory, module };
@@ -145,7 +153,7 @@ function pushEvent(out, cal, ev, start, end, uidSuffix) {
   if (ev.status && String(ev.status).toUpperCase() === "CANCELLED") return;
   const title = arabicPOM(String(ev.summary || "(untitled)").replace(/\s+/g, " ").trim());
   const { text, links } = cleanDescription(ev.description);
-  const { kind, mandatory, module } = classify(title);
+  let { kind, mandatory, module } = classify(title);
   const rec = {
     id: (ev.uid || "") + (uidSuffix || ""),
     cal: cal.id,
@@ -176,6 +184,7 @@ function pushEvent(out, cal, ev, start, end, uidSuffix) {
     const year = cal.classOf ? ay - cal.classOf + 5 : cal.year;
     rec.module = year === 2 ? "POM 3" : (mo >= 7 ? "POM 1" : "POM 2");
   } else if (module) rec.module = module;
+  if (kind === "exam" && /^POM \d/.test(rec.module || "")) rec.kind = kind = "osce";   /* "POM SGD: Mid-Module Exam" resolves to POM 1/2/3 only here */
   /* per-student assessment time (user rule 2026-09-27): an OSCE is 3 h per student however long the
      day runs; an all-day proctored exam counts its allotted block (calendar entries state none, so
      the standard 4 h block is used); make-up / re-take days and deadlines are not counted */
