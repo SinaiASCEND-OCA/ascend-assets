@@ -8,7 +8,16 @@
    counted: open time / breaks / office hours, module-period banners, all-day items, multi-day
    quiz or pre-check windows, modules that are not curriculum (Student Services, Curriculum
    Events, APEX, and BaseCamp, which is orientation), optional sessions, sessions
-   with no module in the title, and modules still ahead whose calendar holds only their exam / OSCE dates. Group A / Group B copies count half each (the two groups averaged). POM assessments are OSCEs; EXAM is the NBME CAS exam.
+   with no module in the title, and modules still ahead whose calendar holds only their exam / OSCE dates. POM assessments are OSCEs; EXAM is the NBME CAS exam.
+   Two measures per module (OCA definitions, 2026-10-31):
+     allotted   = the time the module holds on the calendar: per day, the union of its counted sessions (all groups,
+                  sections and windows), plus the per-student time of all-day assessments.
+     perStudent = the time one student spends: per session, one group's time when Group A and B meet at different
+                  times, one section's time when the class is split within a block ("Groups 1–5" / "Groups 6–10", or
+                  overlapping copies), one window for slot sessions (GU/GYN exam), 3 h per OSCE and 4 h per all-day
+                  proctored exam. Staggered windows ("see Blackboard roster for assigned start time") do not show a
+                  student's slot, so they count the window (an upper bound) and are counted in `staggered`.
+     total (and instructional / assessment / byType hours) = perStudent. Content hours are not computed here.
    A calendar reused every year derives its class cohort from its curriculum year (year 1 calendar
    in AY 2026–27 = Class of 2030); a calendar that belongs to one class carries "classOf" in
    calendars.json (the Phase 2 calendar is the Class of 2028's own, Feb 2025 onward). */
@@ -27,7 +36,7 @@ const r2 = n => Math.round(n*100)/100;
 const TODAY = local(new Date().toISOString()).ymd;
 
 const out = { generated: data.generated, source: "ASCEND Class Calendar (Google Calendar, public iCal feed)", tz: TZ,
-  rules: "Scheduled durations of same-day timed sessions; a session run separately for Group A and Group B is counted once, at the average of the two groups' times; an all-day restricted-date marker is not counted when the timed exam or OSCE entry is on the same day. instructional = LEC/SGD/CCSG/LAB/ACS (applied clinical session)/PNL/REV/INT/clinical/other sessions; assessment = EXAM/OSCE/timed QUIZ; an OSCE counts 3 h per student and an all-day proctored exam its allotted 4 h block (make-up/re-take days not counted); a timed exam counts its scheduled block, which is longer than the NBME CAS testing time of 1.5 min per item. Excluded: open time, breaks, office hours, module-period banners, all-day items, multi-day quiz/pre-check windows, Student Services, Curriculum Events and APEX (not curriculum), BaseCamp (orientation), optional sessions, sessions open only to a subgroup (MD/PhD students, clerkship reps), and sessions with no module in the title. Planning estimate, not the curriculum map of record.",
+  rules: "Per-student scheduled curricular hours (total) and the module's allotted calendar time (allotted). Scheduled durations of same-day timed sessions; a session run separately for Group A and Group B, or split into sections within a block, is counted once, at one group's or section's time; a slot session offered in several windows is counted once; staggered windows count the full window (upper bound, see staggered); an all-day restricted-date marker is not counted when the timed exam or OSCE entry is on the same day. instructional = LEC/SGD/CCSG/LAB/ACS (applied clinical session)/PNL/REV/INT/clinical/other sessions; assessment = EXAM/OSCE/timed QUIZ; an OSCE counts 3 h per student and an all-day proctored exam its allotted 4 h block (make-up/re-take days not counted); a timed exam counts its scheduled block, which is longer than the NBME CAS testing time of 1.5 min per item. Excluded: open time, breaks, office hours, module-period banners, all-day items, multi-day quiz/pre-check windows, Student Services, Curriculum Events and APEX (not curriculum), BaseCamp (orientation), optional sessions, sessions open only to a subgroup (MD/PhD students, clerkship reps), and sessions with no module in the title. Planning estimate, not the curriculum map of record.",
   cohorts: {} };
 for (const cal of data.calendars) {
   const seen = new Set();
@@ -46,22 +55,71 @@ for (const cal of data.calendars) {
     if (EXCLUDED.has(e.module)) continue;
     const mname = e.module || "No module named";
     const M = Y.modules[mname] || (Y.modules[mname] = { official: !!e.module, first: a.ymd, last: a.ymd, sessions: 0, groupDuplicates: 0, instructional: 0, assessment: 0, total: 0, byType: {} });
-    /* Group A / Group B copies: a student attends one group's copy, and the two often differ in length (a 3-hour
-       morning lab, a 2-hour afternoon lab) or in title, so each copy counts half (the two groups averaged) */
     const ab = e.group === "A" || e.group === "B";
     let repeat = false;
-    if (e.gkey) { const gk = ck + "|" + ay + "|" + mname + "|" + e.gkey; if (seen.has(gk)) { M.groupDuplicates++; if (!ab) continue; repeat = true; } else seen.add(gk); }
-    const h = (e.hours != null ? e.hours : (eMin - a.min)/60) / (ab ? 2 : 1), counted = !e.subset && !e.optional && (INSTR.has(e.kind) || ASSESS.has(e.kind));
+    if (e.gkey) { const gk = ck + "|" + ay + "|" + mname + "|" + e.gkey; if (seen.has(gk)) { M.groupDuplicates++; repeat = true; } else seen.add(gk); }
+    const counted = !e.subset && !e.optional && (INSTR.has(e.kind) || ASSESS.has(e.kind));
     if (a.ymd < M.first) M.first = a.ymd; if (a.ymd > M.last) M.last = a.ymd;
     if (!repeat) M.sessions++;
     const tk = e.subset ? "subset" : e.optional ? "optional" : e.kind;
     const T = M.byType[tk] || (M.byType[tk] = e.subset ? { code: "SUBSET", label: "Subgroup-only session (MD/PhD, clerkship reps)", sessions: 0, mandatory: 0, hours: 0, countedAs: "not counted" }
       : e.optional ? { code: "OPTIONAL", label: "Optional session", sessions: 0, mandatory: 0, hours: 0, countedAs: "not counted" }
       : { code: CODE[e.kind] || e.kind.toUpperCase(), label: KINDS[e.kind] || e.kind, sessions: 0, mandatory: 0, hours: 0, countedAs: INSTR.has(e.kind) ? "instructional" : ASSESS.has(e.kind) ? "assessment" : "not counted" });
-    if (!repeat) { T.sessions++; if (e.mandatory) T.mandatory++; } T.hours += h;
-    if (e.subset || e.optional) {} else if (INSTR.has(e.kind)) M.instructional += h; else if (ASSESS.has(e.kind)) M.assessment += h;
-    if (counted) M.total += h;
+    if (!repeat) { T.sessions++; if (e.mandatory) T.mandatory++; }
+    (M._ev || (M._ev = [])).push({ e, tk, counted, ymd: a.ymd, s: a.min, f: e.allDay ? a.min : eMin, ab, repeat });
   }
+}
+/* per-session hours: allotted (module footprint) and per student */
+const SECT = /\b(?:groups?\s*\d+\s*[–-]\s*\d+|grp\.?\s*[AB](?:\s*&\s*[AB])?|group\s*[A-Z0-9]+(?:\s*&\s*[A-Z0-9]+)?|section\s*\w+)\b\s*:?/gi;
+const STAG = /assigned (start |arrival )?time|blackboard roster|ccsg roster|for assigned students|individual schedule|assignment roster/i;
+const SLOT = /GU\/?GYN EXAM/i;
+const unionMin = iv => { iv = iv.slice().sort((x, y) => x[0] - y[0]); let t = 0, cs = null, ce = null;
+  for (const [s0, f0] of iv) { if (cs === null) { cs = s0; ce = f0; } else if (s0 <= ce) ce = Math.max(ce, f0); else { t += ce - cs; cs = s0; ce = f0; } } if (cs !== null) t += ce - cs; return t; };
+function sessionKey(t) {
+  const clean = t.replace(/^\s*\((?:mandatory|optional)[^)]*\)\s*/i, "").trim();
+  if (SLOT.test(clean)) return "slot|" + clean.replace(/\b(LAB|LEC|SGD)\s*\d+\s*:?/gi, "").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+  return clean.replace(SECT, " ").replace(/\(.*?\)/g, " ").replace(/[^a-z0-9]+/gi, " ").trim().toLowerCase();
+}
+for (const C of Object.values(out.cohorts)) for (const Y of Object.values(C.years)) for (const M of Object.values(Y.modules)) {
+  const ev = (M._ev || []).filter(x => x.counted); delete M._ev;
+  /* allotted: per day, the union of counted timed sessions; all-day assessments add their per-student time */
+  const byDay = {}; let allot = 0;
+  for (const x of ev) { if (x.e.allDay) continue; (byDay[x.ymd] = byDay[x.ymd] || []).push([x.s, x.f]); }
+  for (const iv of Object.values(byDay)) allot += unionMin(iv) / 60;
+  const allDayKeys = new Set();
+  for (const x of ev) if (x.e.allDay && x.e.hours > 0) { const k = x.e.gkey || x.e.title; if (!allDayKeys.has(k)) { allDayKeys.add(k); allot += x.e.hours; } }
+  /* per student, session by session */
+  const sess = {};
+  for (const x of ev) { const k = sessionKey(x.e.title); (sess[k] = sess[k] || []).push(x); }
+  let per = 0, instr = 0, assess = 0, staggered = 0, split = 0;
+  for (const T of Object.values(M.byType)) T.hours = 0;
+  for (const list of Object.values(sess)) {
+    let h;
+    const hrs = list.map(x => x.e.hours).filter(n => n > 0);
+    const timed = list.filter(x => !x.e.allDay);
+    if (hrs.length) h = Math.max(...hrs);
+    else if (list.some(x => SLOT.test(x.e.title))) { h = Math.max(...timed.map(x => (x.f - x.s) / 60)); staggered++; }
+    else {
+      const groups = [...new Set(timed.map(x => x.e.group).filter(g => g === "A" || g === "B"))];
+      const daysOf = arr => { const d = {}; for (const x of arr) (d[x.ymd] = d[x.ymd] || []).push(x); return Object.values(d); };
+      const dayHours = arr => daysOf(arr).reduce((acc, t) => {
+        const ov = t.length > 1 && t.some((p, i) => t.some((q, j) => i !== j && p.s < q.f && q.s < p.f));
+        const sec = t.length > 1 && (ov || t.some(x => { SECT.lastIndex = 0; return SECT.test(x.e.title); }));
+        if (sec) split++;
+        return acc + (sec ? Math.max(...t.map(x => (x.f - x.s) / 60)) : unionMin(t.map(x => [x.s, x.f])) / 60); }, 0);
+      if (groups.length) { h = Math.max(...groups.map(g => dayHours(timed.filter(x => x.e.group === g || x.e.group === "AB" || !x.e.group)))); split++; }
+      else h = dayHours(timed);
+      if (list.some(x => STAG.test(x.e.title))) staggered++;
+    }
+    const k0 = list[0].tk, T = M.byType[k0]; if (T) T.hours += h;
+    per += h; if (INSTR.has(list[0].e.kind)) instr += h; else assess += h;
+    /* a session split into sections on one day ("Groups 1–5" / "Groups 6–10") is one session per student, not one per section */
+    if (T) { const days = {}; for (const x of list) { if (x.repeat || x.e.group === "A" || x.e.group === "B") continue; (days[x.ymd] = days[x.ymd] || []).push(x); }
+      for (const t of Object.values(days)) if (t.length > 1 && t.some(x => { SECT.lastIndex = 0; return SECT.test(x.e.title); })) {
+        const extra = t.length - 1; T.sessions -= extra; M.sessions -= extra; T.mandatory -= Math.max(0, t.filter(x => x.e.mandatory).length - (t.some(x => x.e.mandatory) ? 1 : 0)); } }
+  }
+  M.allotted = r2(Math.max(allot, per)); M.perStudent = r2(per); M.staggered = staggered; M.splitSessions = split;
+  M.instructional = instr; M.assessment = assess; M.total = per;
 }
 for (const C of Object.values(out.cohorts)) for (const Y of Object.values(C.years)) {
   /* a module still ahead whose calendar holds only its exam / OSCE dates (spring modules are entered as placeholder blocks
