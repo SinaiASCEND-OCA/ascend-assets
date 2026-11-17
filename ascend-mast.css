@@ -1,7 +1,7 @@
 /* ASCEND masthead — the Programmatic Assessment house style, packaged so any
    ASCEND site can wear it.
 
-     <link rel="stylesheet" href="https://sinaiascend-oca.github.io/Dashboard---HUB/ascend-mast.css">
+     <link rel="stylesheet" href="https://sinaiascend-oca.github.io/ascend-assets/ascend-mast.css">
 
    Markup:
      <header class="ascend-mast ascend-mast--compact">
@@ -11,7 +11,7 @@
            <span class="am-dot"></span>
            <div class="am-eyebrow">ICAHN SCHOOL OF MEDICINE AT MOUNT SINAI<br>
              LENI AND PETER W. MAY DEPARTMENT OF MEDICAL EDUCATION</div>
-           <a class="am-hub" href="https://sinaiascend-oca.github.io/Dashboard---HUB/">&larr; Back to ASCEND Hub</a>
+           <a class="am-hub am-home" href="/">&#8962; Dashboard home</a>   (optional)
          </div>
          <h1>Title</h1>
          <div class="am-motto"><span class="a">Climb higher.</span><span class="b">Reach further.</span><span class="c">Care deeper.</span></div>
