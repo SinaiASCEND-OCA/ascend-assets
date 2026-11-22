@@ -12,6 +12,9 @@
    data-nav    JSON list of section links for the utility row; "on" marks the current one
    data-hide   CSS selector(s) for the page's own header, hidden so there is one masthead
    data-full   present = full-height masthead instead of the compact variant
+   data-updated       date the page's data was last rebuilt ("2026-11-12"); without it the
+   data-updated-note  "Last updated" line shows the day the dashboard was last published.
+                      See ascend-updated.js.
    data-home   URL of this dashboard's home page for the "Dashboard home" button. Without
                it the button points at the dashboard's own folder (/<dashboard>/); it
                stays hidden on that page itself.
@@ -33,6 +36,11 @@
       "@media(max-width:767px){.ascend-mast .am-btns{flex:0 0 auto;flex-wrap:nowrap;gap:6px}" +
       ".ascend-mast .am-hub .am-lg{display:none}.ascend-mast .am-hub .am-sm{display:inline}}";
     document.head.appendChild(bc);
+  }
+  if (!window.ascendUpdated) {                    // "Last updated" line, see ascend-updated.js
+    var up = document.createElement("script"); up.src = BASE + "ascend-updated.js";
+    if (d.updated) { up.dataset.updated = d.updated; if (d.updatedNote) up.dataset.updatedNote = d.updatedNote; }
+    document.head.appendChild(up);
   }
   if (d.hide) { var st = document.createElement("style"); st.textContent = d.hide + "{display:none!important}"; document.head.appendChild(st); }
   function render() {
