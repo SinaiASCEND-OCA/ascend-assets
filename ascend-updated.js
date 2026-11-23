@@ -45,7 +45,8 @@
      replace it (window.ASCEND_UPDATED = { notice: "…" }, or data-notice="…" on the script tag) or
      hide it (notice: false, or data-notice="none"). */
   var NOTICE = "Student data is handled in accordance with FERPA. Student performance data on this dashboard is " +
-    "de-identified and shown in aggregate only: no individual student\u2019s grades or scores are published on this site or stored in its files.";
+    "de-identified and shown in aggregate only: no individual student\u2019s grades or scores are published on this site or stored in its files. " +
+    "Dashboards are prepared with AI assistance on school-managed computers; no student-level data is published.";
   function notice() {
     var o = state.opts || {};
     if (o.notice === false || d.notice === "none") return "";
