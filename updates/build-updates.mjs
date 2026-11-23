@@ -3,7 +3,7 @@
    one small file per dashboard repo, updates/data/<repo>.json, listing its most recent
    updates (date, one-line description, files changed).
 
-     node updates/build-updates.mjs              # all dashboard repos of the organization
+     node updates/build-updates.mjs              # every dashboard repo (see OWNERS)
      node updates/build-updates.mjs --only Dashboard-Phase-1-Program-Assessment
      node updates/build-updates.mjs --check      # print a summary, write nothing
 
@@ -11,7 +11,7 @@
    direct commit. Only the date, the first line of the description and the names of the
    files that changed are kept; no author, no commit id, no file contents.
 
-   It reads GitHub with a token that can read the organization's private repos:
+   It reads GitHub with a token that can read the private repos of both accounts:
    GH_TOKEN (or GITHUB_TOKEN) in the environment, else the `gh` CLI's login. The Pages
    workflow runs it when the DASHBOARD_READ_TOKEN secret is set; without it the files
    already committed in updates/data/ are published as they are. */
@@ -21,8 +21,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ORG = "SinaiASCEND-OCA";
+/* Whose repos: every repo of the organization, and the dashboards still kept in the older account. */
+const OWNERS = {
+  "SinaiASCEND-OCA": null,
+  "SinaiASCEND": ["Dashboard---HUB", "ASQ-ISA", "Dashboard---LCME", "Curricular-Affairs", "Dashboard---BabyBates",
+    "Dashboard---Policy-Library", "Dashboard---Calendar", "Dashboard---CA-Meetings"],
+};
 const SKIP = new Set(["ascend-assets", ".github"]);      // not dashboards
+/* Repos whose history names people (a staff directory): publish dates and file counts only. */
+const COUNTS_ONLY = new Set(["Curricular-Affairs"]);
 const KEEP = 25;                                         // updates kept per dashboard
 const MAX_FILES = 60;                                    // file names listed per update
 const args = process.argv.slice(2);
@@ -55,7 +62,7 @@ function title(message) {
   if (/^Merge (branch|remote-tracking branch) /.test(t)) t = "Merged changes";
   t = t.replace(/\s*\(#\d+\)\s*$/, "").replace(/\s*\(\d{4}-\d\d-\d\d \d\d:\d\d UTC\)\s*$/, "");
   // The log is public: say nothing about when or how access codes and gates change.
-  if (/access code|passcode|password|owner tier|encrypt|\bgate[sd]?\b/i.test(t)) t = "Access settings updated";
+  if (/access|passcode|password|owner|\btiers?\b|encrypt|\bgate[sd]?\b|\bcodes?\b|security|unlock|admin|FERPA/i.test(t)) t = "Access settings updated";
   return t.slice(0, 200);
 }
 /* Automated refreshes can publish several times a day under one description: show them once. */
@@ -66,14 +73,14 @@ function merged(list) {
     if (last && last.date === u.date && last.title === u.title) {
       const seen = new Set(last.files.map(f => f.p));
       for (const f of u.files) if (!seen.has(f.p) && last.files.length < MAX_FILES) { last.files.push(f); seen.add(f.p); }
-      last.n = Math.max(last.n, u.n, seen.size); last.times = (last.times || 1) + 1;
+      last.n = last.files.length ? Math.max(last.n, u.n, seen.size) : last.n + u.n; last.times = (last.times || 1) + 1;
     } else out.push({ ...u, files: u.files.slice() });
   }
   return out;
 }
 const STATUS = { added: "A", removed: "D", renamed: "R", modified: "M", changed: "M", copied: "A" };
 
-async function build(repo, branch) {
+async function build(ORG, repo, branch) {
   const file = join(OUT, repo + ".json");
   let old = null;
   try { old = JSON.parse(readFileSync(file, "utf8")); } catch {}
@@ -95,7 +102,8 @@ async function build(repo, branch) {
       files = all.slice(0, MAX_FILES).map(f => ({ p: f.filename, s: STATUS[f.status] || "M" }));
     }
     const at = c.commit.committer.date;
-    if (n > 0) raw.push({ date: nyDate(at), at, title: title(c.commit.message), n, files });
+    if (n > 0) raw.push(COUNTS_ONLY.has(repo) ? { date: nyDate(at), at, title: "Directory updated", n, files: [] }
+      : { date: nyDate(at), at, title: title(c.commit.message), n, files });
     c = parent ? bySha.get(parent) : null;
   }
   const updates = merged(raw).slice(0, KEEP);
@@ -108,11 +116,16 @@ async function build(repo, branch) {
 }
 
 const only = opt("--only");
-let repos;
-if (only) { const r = await gh(`repos/${ORG}/${only}`); repos = [r]; }
-else repos = (await gh(`orgs/${ORG}/repos?per_page=100&type=all`)).filter(r => !r.archived && !SKIP.has(r.name));
 let failed = 0;
-for (const r of repos.sort((a, b) => a.name.localeCompare(b.name))) {
-  try { await build(r.name, r.default_branch); } catch (e) { failed++; console.error(`${r.name}: ${e.message}`); }
+for (const [owner, names] of Object.entries(OWNERS)) {
+  let repos;
+  try {
+    if (names) repos = await Promise.all(names.map(n => gh(`repos/${owner}/${n}`)));
+    else repos = (await gh(`orgs/${owner}/repos?per_page=100&type=all`)).filter(r => !r.archived && !SKIP.has(r.name));
+  } catch (e) { failed++; console.error(`${owner}: ${e.message}`); continue; }
+  for (const r of repos.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (only && r.name !== only) continue;
+    try { await build(owner, r.name, r.default_branch); } catch (e) { failed++; console.error(`${r.name}: ${e.message}`); }
+  }
 }
 if (failed && !flag("--optional")) process.exit(1);

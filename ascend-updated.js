@@ -11,7 +11,8 @@
    Where the log comes from
      updates/data/<dashboard>.json in this folder, rebuilt every 30 minutes for every
      dashboard repo of the organization (updates/build-updates.mjs). On *.github.io the
-     dashboard is the first part of the address; a page on another host names it:
+     dashboard is the first part of the address; other known hosts are listed in HOSTS
+     below; a page anywhere else names it:
        data-log="Dashboard---Governance"   on the script tag (or on ascend-mast.js), or
        window.ASCEND_UPDATED = { log: "Dashboard---Governance" }.
 
@@ -25,10 +26,14 @@
      3. Otherwise (no log, or the page was published after the log was last rebuilt) the
         web server's Last-Modified time for the page, which GitHub Pages sets on every publish.
 
+   Data notice: the log ends with a short data-privacy notice (NOTICE below); see there for
+   how a page replaces or hides it.
+
    Where it goes: inside an element with id="ascend-updated" if the page has one; else at the
-   top right of the shared masthead, or of a page's own masthead (header.mast); else at the
-   top right of the page's first <header>; else as a last line of the page's <footer> or of
-   the page. Nothing is shown when no date can be determined. */
+   top right of the masthead (the shared one, or a page's own header or top bar), beside any
+   button already there; else as a last line of the page's <footer> or of the page. A masthead
+   that appears later (after an intro or an unlock) is picked up. Nothing is shown when no
+   date can be determined. */
 (function () {
   if (window.ascendUpdated) return;
   var s = document.currentScript, d = (s && s.dataset) || {};
@@ -36,6 +41,17 @@
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var esc = function (t) { return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); };
   var state = { opts: null, log: null, asked: "" }, btn = null, panel = null;
+  /* The data notice at the foot of every update log. One place to change the wording. A page can
+     replace it (window.ASCEND_UPDATED = { notice: "…" }, or data-notice="…" on the script tag) or
+     hide it (notice: false, or data-notice="none"). */
+  var NOTICE = "Student data is handled in accordance with FERPA. Student performance data on this dashboard is " +
+    "de-identified and shown in aggregate only: no individual student\u2019s grades or scores are published on this site or stored in its files. " +
+    "Dashboards are prepared with AI assistance on school-managed computers; no student-level data is published.";
+  function notice() {
+    var o = state.opts || {};
+    if (o.notice === false || d.notice === "none") return "";
+    return String(o.notice || d.notice || NOTICE);
+  }
 
   function label(v, short) {               // "2026-11-12" or a Date -> "Nov 12, 2026"; other text passes through
     if (v instanceof Date) return isNaN(v) ? "" : MON[v.getMonth()] + " " + v.getDate() + (short ? "" : ", " + v.getFullYear());
@@ -53,9 +69,16 @@
     if (typeof o === "string") o = { date: o };
     return o;
   }
+  /* Dashboards that are not served from *.github.io: address -> repo whose log to show. */
+  var HOSTS = {
+    "ascend-governance.vercel.app": "Dashboard---Governance",
+    "ascend-clinical-skills.vercel.app": "Dashboard---Clinical-Skills-Rubrics",
+    "ascend-ca-meetings.vercel.app": "Dashboard---CA-Meetings"
+  };
   function logName(o) {
     if (o.log === false || d.log === "none") return "";
     if (o.log || d.log) return String(o.log || d.log);
+    if (HOSTS[location.hostname]) return HOSTS[location.hostname];
     return /\.github\.io$/i.test(location.hostname) ? decodeURIComponent(location.pathname.split("/")[1] || "") : "";
   }
 
@@ -71,7 +94,7 @@
       ".ascend-updated--mast{color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:7px 13px;min-height:32px}" +
       ".ascend-updated--mast:hover,.ascend-updated--mast[aria-expanded=true]{background:#d6117f;border-color:#d6117f;color:#fff}" +
       ".ascend-updated-slot{margin-left:auto;display:inline-flex;align-items:center;flex:0 0 auto}" +
-      ".ascend-updated-slot ~ .hub,.ascend-updated-slot ~ a.hub{margin-left:8px!important}" +
+      ".ascend-updated-slot ~ .hub,.ascend-updated-slot ~ .am-hub{margin-left:8px!important}" +
       /* on a header this script does not know: same pill, pinned to its top right corner */
       ".ascend-updated--corner{position:absolute;top:10px;right:14px;z-index:5;color:#fff;background:rgba(17,24,39,.72);border:1px solid rgba(255,255,255,.45);border-radius:999px;padding:7px 13px}" +
       ".ascend-updated--corner:hover,.ascend-updated--corner[aria-expanded=true]{background:#d6117f;border-color:#d6117f}" +
@@ -92,7 +115,8 @@
       ".au-panel details summary{cursor:pointer;color:#B00A73;font-weight:600;font-size:12px}.au-panel details ul{list-style:none;margin:6px 0 2px;padding:0}" +
       ".au-panel details li{display:flex;gap:8px;padding:2px 0;font:400 12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#374151;word-break:break-all}" +
       ".au-st{flex:0 0 58px;font:600 10px/1.7 " + F + ";text-transform:uppercase;letter-spacing:.04em;color:#6b7280}.au-st.A{color:#0a7a3d}.au-st.D{color:#b42318}" +
-      ".au-more{color:#6b7280;font-style:italic}.au-foot{margin:0;padding:9px 14px 12px;color:#6b7280;font-size:12px;border-top:1px solid #e5e7eb}";
+      ".au-more{color:#6b7280;font-style:italic}.au-count{color:#6b7280;font-size:12px;font-weight:600}" +
+      ".au-notice{margin:0;padding:10px 14px 12px;background:#f6f7fb;border-top:1px solid #e5e7eb;color:#374151;font-size:12px;line-height:1.45}.au-notice b{color:#221F72}.au-foot{margin:0;padding:9px 14px 12px;color:#6b7280;font-size:12px;border-top:1px solid #e5e7eb}";
     document.head.appendChild(c);
   }
 
@@ -108,22 +132,67 @@
     return r;
   }
 
+  /* Where the button can go right now, best first:
+       5 the page's own #ascend-updated slot      2 the top right corner of the header
+       4 the masthead's row of buttons            1 a line under the header (corner taken, no room beside it)
+       3 the masthead's top row                   0 the page's footer, or the foot of the page
+     A masthead that appears later (after an intro, an unlock or a script) is picked up by recheck(). */
+  function shown(el) { var r = el.getBoundingClientRect(), cs = getComputedStyle(el); return r.height >= 30 && r.width >= 200 && cs.visibility !== "hidden" && cs.display !== "none"; }
+  function topBar(el, depth) {              // a full-width bar at the top of the page that is not a <header>
+    var kids = el.children, i, k, r;
+    for (i = 0; i < kids.length; i++) {
+      k = kids[i];
+      if (/^(SCRIPT|STYLE|LINK|NOSCRIPT|TEMPLATE)$/.test(k.tagName) || /ascend-updated|au-panel/.test(String(k.className))) continue;
+      r = k.getBoundingClientRect(); if (r.height < 1 || getComputedStyle(k).display === "none") continue;
+      if (r.top + window.pageYOffset > 40 || r.width < window.innerWidth * 0.9) return null;
+      if (r.height >= 36 && r.height <= 320) return k;
+      return depth < 3 ? topBar(k, depth + 1) : null;
+    }
+    return null;
+  }
+  function header() {
+    var list = document.querySelectorAll("#ascend-masthead, body > header, .ascend-mast, header.mast, body header"), i;
+    for (i = 0; i < list.length; i++) if (shown(list[i])) return list[i];
+    return topBar(document.body, 0);
+  }
+  function corner(hdr) {                    // where in the header's top right corner the button fits, or null
+    var r = hdr.getBoundingClientRect(), free = { top: 10, right: 14 };
+    if (!document.elementFromPoint || r.top < -4 || r.top > window.innerHeight - 40) return free;
+    var y = r.top + Math.min(26, r.height / 2), xs = [r.right - 24, r.right - 90, r.right - 170, r.right - 250], i, el, hit = null, hr;
+    for (i = 0; i < xs.length; i++) {
+      el = document.elementFromPoint(Math.max(0, xs[i]), y); el = el && el.closest && el.closest("a,button,select,input,label");
+      if (el && hdr.contains(el) && (!hit || el.getBoundingClientRect().left < hit.getBoundingClientRect().left)) hit = el;
+    }
+    if (!hit) return free;
+    hr = hit.getBoundingClientRect();           // something is there already: sit just to its left, on its line
+    var left = hr.left - 10 - 250;
+    if (left < r.left + r.width * 0.4) return null;
+    el = document.elementFromPoint(hr.left - 60, hr.top + hr.height / 2); el = el && el.closest && el.closest("a,button,select,input,label");
+    if (el && hdr.contains(el)) return null;
+    return { top: Math.max(4, Math.round(hr.top - r.top + (hr.height - 32) / 2)), right: Math.round(r.right - hr.left + 10) };
+  }
+  function spot() {
+    var slot = document.getElementById("ascend-updated"); if (slot) return { rank: 5, slot: slot };
+    var hdr = header(); if (!hdr) return { rank: 0 };
+    var btns = hdr.querySelector(".am-btns"); if (btns) return { rank: 4, btns: btns };
+    var top = hdr.querySelector(".am-top, .top"); if (top && /flex/.test(getComputedStyle(top).display)) return { rank: 3, top: top };
+    var c = corner(hdr); return c ? { rank: 2, hdr: hdr, at: c } : { rank: 1, hdr: hdr };
+  }
+  var rank = -1, holder = null;
   function place() {                        // returns the button, already in the page
     var b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-haspopup", "dialog"); b.setAttribute("aria-expanded", "false");
-    var slot = document.getElementById("ascend-updated");
-    var btns = document.querySelector("#ascend-masthead .am-btns");
-    var top = document.querySelector("header.mast .top");
-    var hdr = document.querySelector("body > header, body > .ascend-mast, header.mast, body header");
-    if (slot) { b.className = "ascend-updated " + (slot.closest && slot.closest("header,.ascend-mast") ? "ascend-updated--mast" : "ascend-updated--infoot"); slot.textContent = ""; slot.appendChild(b); }
-    else if (btns) { b.className = "ascend-updated ascend-updated--mast"; btns.insertBefore(b, btns.firstChild); }
-    else if (top) {
-      var w = document.createElement("span"); w.className = "ascend-updated-slot"; b.className = "ascend-updated ascend-updated--mast"; w.appendChild(b);
-      var hub = top.querySelector(".hub"); if (hub && hub.parentNode === top) top.insertBefore(w, hub); else top.appendChild(w);
+    var s = spot(), w; rank = s.rank; holder = b;
+    if (s.slot) { b.className = "ascend-updated " + (s.slot.closest && s.slot.closest("header,.ascend-mast") ? "ascend-updated--mast" : "ascend-updated--infoot"); s.slot.textContent = ""; s.slot.appendChild(b); }
+    else if (s.btns) { b.className = "ascend-updated ascend-updated--mast"; s.btns.insertBefore(b, s.btns.firstChild); }
+    else if (s.top) {
+      w = document.createElement("span"); w.className = "ascend-updated-slot"; b.className = "ascend-updated ascend-updated--mast"; w.appendChild(b); holder = w;
+      var hub = s.top.querySelector(".hub, .am-hub"); if (hub && hub.parentNode === s.top) s.top.insertBefore(w, hub); else s.top.appendChild(w);
     }
-    else if (hdr && hdr.getBoundingClientRect().height >= 36) {
-      if (cornerFree(hdr)) { if (getComputedStyle(hdr).position === "static") hdr.style.position = "relative"; b.className = "ascend-updated ascend-updated--corner"; hdr.appendChild(b); }
-      else { var bar = document.createElement("div"); bar.className = "ascend-updated-bar"; b.className = "ascend-updated ascend-updated--bar"; bar.appendChild(b); hdr.parentNode.insertBefore(bar, hdr.nextSibling); }
+    else if (s.at) {
+      if (getComputedStyle(s.hdr).position === "static") s.hdr.style.position = "relative";
+      b.className = "ascend-updated ascend-updated--corner"; b.style.top = s.at.top + "px"; b.style.right = s.at.right + "px"; s.hdr.appendChild(b);
     }
+    else if (s.hdr) { w = document.createElement("div"); w.className = "ascend-updated-bar"; b.className = "ascend-updated ascend-updated--bar"; w.appendChild(b); holder = w; s.hdr.parentNode.insertBefore(w, s.hdr.nextSibling); }
     else {
       var feet = document.querySelectorAll("body > footer"), foot = feet[feet.length - 1];
       if (foot) { b.className = "ascend-updated ascend-updated--infoot"; foot.appendChild(b); keep(foot, b); }
@@ -132,14 +201,10 @@
     b.addEventListener("click", function (e) { e.stopPropagation(); toggle(); });
     return b;
   }
-  function cornerFree(hdr) {                // nothing to click already sits in the header's top right corner
-    var r = hdr.getBoundingClientRect(), xs = [r.right - 30, r.right - 120, r.right - 230], y = r.top + 24, i, el;
-    if (!document.elementFromPoint) return true;
-    for (i = 0; i < xs.length; i++) {
-      el = document.elementFromPoint(Math.max(0, xs[i]), Math.max(0, y));
-      if (el && el.closest && el.closest("a,button,select,input,label,nav")) return false;
-    }
-    return true;
+  function recheck(always) {                // move the button when a better place has appeared (or the window changed size)
+    if (!btn || panel || rank >= 4) return;
+    var s = spot();
+    if (s.rank > rank || (always && rank <= 2)) { if (holder) holder.remove(); btn.remove(); btn = null; draw(); }
   }
   function keep(foot, el) {                 // a page that redraws its footer keeps the line
     if (!window.MutationObserver) return;
@@ -173,12 +238,15 @@
         var more = u.n - u.files.length;
         h += '<li><div class="au-date">' + esc(label(u.date)) + (u.times > 1 ? ' <span class="au-times">&middot; ' + u.times + " times</span>" : "") + "</div>" +
           '<div class="au-title">' + esc(u.title) + "</div>" +
+          (!u.files.length ? '<div class="au-count">' + files(u.n) + "</div></li>" :
           "<details" + (i === 0 ? " open" : "") + "><summary>" + files(u.n) + "</summary><ul>" +
           u.files.map(function (f) { return '<li><span class="au-st ' + esc(f.s) + '">' + (ST[f.s] || "changed") + "</span><span>" + esc(f.p) + "</span></li>"; }).join("") +
-          (more > 0 ? '<li class="au-more">and ' + more + " more</li>" : "") + "</ul></details></li>";
+          (more > 0 ? '<li class="au-more">and ' + more + " more</li>" : "") + "</ul></details></li>");
       });
       h += "</ul>" + '<p class="au-foot">The ' + (list.length === 1 ? "only update" : "last " + list.length + " updates") + " to this dashboard, newest first.</p>";
     }
+    var nt = notice();
+    if (nt) h += '<p class="au-notice"><b>Data privacy.</b> ' + esc(nt) + "</p>";
     panel.innerHTML = h;
     panel.querySelector(".au-x").addEventListener("click", function () { close(true); });
   }
@@ -221,6 +289,14 @@
   }
   function render(o) { state.opts = options(o); draw(); load(); }
   window.ascendUpdated = render;
-  function start() { setTimeout(function () { render(); }, 0); }   // after the masthead has had its turn
+  function start() {
+    setTimeout(function () { render(); }, 0);                       // after the masthead has had its turn
+    [500, 1500, 3500, 8000, 16000, 32000].forEach(function (ms) { setTimeout(function () { recheck(false); }, ms); });
+    window.addEventListener("load", function () { recheck(false); });
+    ["click", "keydown", "touchend"].forEach(function (ev) {         // an intro or a gate the viewer has just dismissed
+      document.addEventListener(ev, function () { if (rank < 3) { setTimeout(function () { recheck(false); }, 700); setTimeout(function () { recheck(false); }, 2500); } }, true);
+    });
+    var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(function () { recheck(true); }, 250); });
+  }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
