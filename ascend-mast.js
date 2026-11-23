@@ -13,8 +13,9 @@
    data-hide   CSS selector(s) for the page's own header, hidden so there is one masthead
    data-full   present = full-height masthead instead of the compact variant
    data-updated       date the page's data was last rebuilt ("2026-11-12"); without it the
-   data-updated-note  "Last updated" line shows the day the dashboard was last published.
-                      See ascend-updated.js.
+   data-updated-note  "Last updated" button shows the day of the dashboard's newest update.
+   data-log           the dashboard's repo name, for its update log, on a page that is not
+                      served from *.github.io. See ascend-updated.js.
    data-home   URL of this dashboard's home page for the "Dashboard home" button. Without
                it the button points at the dashboard's own folder (/<dashboard>/); it
                stays hidden on that page itself.
@@ -37,9 +38,10 @@
       ".ascend-mast .am-hub .am-lg{display:none}.ascend-mast .am-hub .am-sm{display:inline}}";
     document.head.appendChild(bc);
   }
-  if (!window.ascendUpdated) {                    // "Last updated" line, see ascend-updated.js
+  if (!window.ascendUpdated) {                    // "Last updated" button, see ascend-updated.js
     var up = document.createElement("script"); up.src = BASE + "ascend-updated.js";
     if (d.updated) { up.dataset.updated = d.updated; if (d.updatedNote) up.dataset.updatedNote = d.updatedNote; }
+    if (d.log) up.dataset.log = d.log;
     document.head.appendChild(up);
   }
   if (d.hide) { var st = document.createElement("style"); st.textContent = d.hide + "{display:none!important}"; document.head.appendChild(st); }
