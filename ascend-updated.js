@@ -26,6 +26,9 @@
      3. Otherwise (no log, or the page was published after the log was last rebuilt) the
         web server's Last-Modified time for the page, which GitHub Pages sets on every publish.
 
+   Data notice: the log ends with a short data-privacy notice (NOTICE below); see there for
+   how a page replaces or hides it.
+
    Where it goes: inside an element with id="ascend-updated" if the page has one; else at the
    top right of the masthead (the shared one, or a page's own header or top bar), beside any
    button already there; else as a last line of the page's <footer> or of the page. A masthead
@@ -38,6 +41,16 @@
   var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   var esc = function (t) { return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); };
   var state = { opts: null, log: null, asked: "" }, btn = null, panel = null;
+  /* The data notice at the foot of every update log. One place to change the wording. A page can
+     replace it (window.ASCEND_UPDATED = { notice: "…" }, or data-notice="…" on the script tag) or
+     hide it (notice: false, or data-notice="none"). */
+  var NOTICE = "Student data is handled in accordance with FERPA. Student performance data on this dashboard is " +
+    "de-identified and shown in aggregate only: no individual student\u2019s grades or scores are published on this site or stored in its files.";
+  function notice() {
+    var o = state.opts || {};
+    if (o.notice === false || d.notice === "none") return "";
+    return String(o.notice || d.notice || NOTICE);
+  }
 
   function label(v, short) {               // "2026-11-12" or a Date -> "Nov 12, 2026"; other text passes through
     if (v instanceof Date) return isNaN(v) ? "" : MON[v.getMonth()] + " " + v.getDate() + (short ? "" : ", " + v.getFullYear());
@@ -101,7 +114,8 @@
       ".au-panel details summary{cursor:pointer;color:#B00A73;font-weight:600;font-size:12px}.au-panel details ul{list-style:none;margin:6px 0 2px;padding:0}" +
       ".au-panel details li{display:flex;gap:8px;padding:2px 0;font:400 12px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#374151;word-break:break-all}" +
       ".au-st{flex:0 0 58px;font:600 10px/1.7 " + F + ";text-transform:uppercase;letter-spacing:.04em;color:#6b7280}.au-st.A{color:#0a7a3d}.au-st.D{color:#b42318}" +
-      ".au-more{color:#6b7280;font-style:italic}.au-count{color:#6b7280;font-size:12px;font-weight:600}.au-foot{margin:0;padding:9px 14px 12px;color:#6b7280;font-size:12px;border-top:1px solid #e5e7eb}";
+      ".au-more{color:#6b7280;font-style:italic}.au-count{color:#6b7280;font-size:12px;font-weight:600}" +
+      ".au-notice{margin:0;padding:10px 14px 12px;background:#f6f7fb;border-top:1px solid #e5e7eb;color:#374151;font-size:12px;line-height:1.45}.au-notice b{color:#221F72}.au-foot{margin:0;padding:9px 14px 12px;color:#6b7280;font-size:12px;border-top:1px solid #e5e7eb}";
     document.head.appendChild(c);
   }
 
@@ -230,6 +244,8 @@
       });
       h += "</ul>" + '<p class="au-foot">The ' + (list.length === 1 ? "only update" : "last " + list.length + " updates") + " to this dashboard, newest first.</p>";
     }
+    var nt = notice();
+    if (nt) h += '<p class="au-notice"><b>Data privacy.</b> ' + esc(nt) + "</p>";
     panel.innerHTML = h;
     panel.querySelector(".au-x").addEventListener("click", function () { close(true); });
   }
